@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">RF Attenuator app icon</title>
+  <desc id="desc">RF lettering above a turquoise T-pad circuit on a dark navy background.</desc>
+  <defs>
+    <radialGradient id="background" cx="35%" cy="20%" r="90%">
+      <stop stop-color="#193440"/>
+      <stop offset="1" stop-color="#0a0e12"/>
+    </radialGradient>
+  </defs>
+  <!-- Full-bleed background; the operating system supplies the corner mask. -->
+  <path fill="url(#background)" d="M0 0h512v512H0z"/>
+  <!-- Letter outlines keep the artwork independent of installed fonts. -->
+  <g fill="none" stroke="#d9eeee" stroke-width="16" stroke-linecap="square" stroke-linejoin="round">
+    <path d="M180 188v-76h35c19 0 28 8 28 23s-9 24-28 24h-35m33 0 33 29"/>
+    <path d="M280 188v-76h52m-52 38h43"/>
+  </g>
+  <!-- Two series resistors and one shunt resistor: the app's T topology. -->
+  <g fill="none" stroke="#2de2e6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M90 256h42m78 0h92m78 0h42M256 256v40m0 64v28"/>
+    <rect x="132" y="236" width="78" height="40" rx="5"/>
+    <rect x="302" y="236" width="78" height="40" rx="5"/>
+    <rect x="236" y="296" width="40" height="64" rx="5"/>
+    <path d="M222 388h68m-54 20h40m-27 20h14"/>
+  </g>
+  <g fill="#2de2e6">
+    <circle cx="90" cy="256" r="12"/>
+    <circle cx="256" cy="256" r="10"/>
+    <circle cx="422" cy="256" r="12"/>
+  </g>
+</svg>

@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e12">
+<meta name="application-name" content="RF Attenuator">
+<meta name="apple-mobile-web-app-title" content="RF Attenuator">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>RF Attenuator Designer &amp; Analyzer</title>
+<style>
+:root{
+  --bg:#0a0e12; --bg2:#0e141b; --card:#111923; --card2:#0c1219;
+  --line:#1d2a38; --line2:#27394d;
+  --txt:#c9d7e2; --dim:#6b7f92; --dimmer:#43556a;
+  --cyan:#2de2e6; --cyan-dim:#1a8f92; --teal:#19b3a6;
+  --amber:#ffb454; --red:#ff6b6b; --violet:#c778dd; --green:#6ee7a0;
+  --mono:'JetBrains Mono','Cascadia Code',Consolas,'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px}
+body{
+  background-image:
+    linear-gradient(rgba(45,226,230,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(45,226,230,.025) 1px,transparent 1px);
+  background-size:28px 28px;
+  min-height:100vh;
+}
+header{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:calc(14px + env(safe-area-inset-top)) calc(22px + env(safe-area-inset-right)) 14px calc(22px + env(safe-area-inset-left));
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#0d1420,#0a0e12);
+  position:sticky;top:0;z-index:50;
+}
+header h1{
+  font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);
+  font-weight:700;white-space:nowrap;
+}
+header h1 span{color:var(--dim);font-weight:400}
+.selftest{font-size:10px;color:var(--dim);border:1px solid var(--line);padding:3px 8px;border-radius:3px}
+.selftest.ok{color:var(--green);border-color:#1f4a35}
+.selftest.bad{color:var(--red);border-color:#5a2323}
+.mode-toggle{display:none}
+.mode-toggle button{
+  background:transparent;border:0;color:var(--dim);font-family:var(--mono);
+  font-size:11px;padding:6px 14px;cursor:pointer;letter-spacing:.05em;
+}
+.mode-toggle button.on{background:var(--cyan);color:#03181a;font-weight:700}
+main{
+  display:grid;grid-template-columns:330px 1fr;gap:18px;
+  padding:18px calc(22px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
+  max-width:1560px;margin:0 auto;
+}
+@media(max-width:1100px){main{grid-template-columns:1fr}}
+
+/* ---------- controls ---------- */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px}
+.panel h2{
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:8px;
+}
+.ctl{margin-bottom:16px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--dim);margin-bottom:5px}
+.ctl label .u{color:var(--dimmer);font-size:10px}
+.ctl .row{display:flex;gap:8px;align-items:center}
+input[type=range]{flex:1;appearance:none;-webkit-appearance:none;height:4px;background:var(--line2);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--cyan);border:2px solid #052a2c;box-shadow:0 0 8px rgba(45,226,230,.5);cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:12px;height:12px;border-radius:50%;background:var(--cyan);border:2px solid #052a2c;cursor:pointer;
+}
+input[type=text].num{
+  width:88px;background:var(--card2);border:1px solid var(--line2);color:var(--cyan);
+  font-family:var(--mono);font-size:12px;padding:5px 7px;border-radius:4px;text-align:right;
+  transition:border-color .15s;
+}
+input[type=text].num:focus{outline:none;border-color:var(--cyan)}
+input[type=text].num.edited{color:var(--violet);border-color:#4d3358}
+.clampnote{font-size:10px;color:var(--amber);height:12px;margin-top:3px;opacity:0;transition:opacity .3s}
+.clampnote.show{opacity:1}
+.unit-toggle{display:flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden}
+.unit-toggle button{background:transparent;border:0;color:var(--dim);font-family:var(--mono);font-size:10px;padding:4px 8px;cursor:pointer}
+.unit-toggle button.on{background:var(--teal);color:#02201c;font-weight:700}
+.btn{
+  background:var(--card2);border:1px solid var(--line2);color:var(--txt);font-family:var(--mono);
+  font-size:11px;padding:7px 12px;border-radius:4px;cursor:pointer;letter-spacing:.04em;
+  transition:all .15s;
+}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:#0b3236;border-color:var(--cyan-dim);color:var(--cyan)}
+.btn.primary:hover{background:#0e434a}
+.btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.btn.small{font-size:10px;padding:4px 8px}
+.btn.primary.stale{
+  background:#2a1f08;border-color:#8a6a1e;color:var(--amber);
+}
+.btn.primary.stale:hover{background:#3a2b0c}
+.minloss-note{
+  display:none;background:#0b2530;border:1px solid #164a5a;color:var(--cyan);
+  font-size:11px;padding:8px 10px;border-radius:4px;margin-top:8px;line-height:1.5;
+}
+.minloss-note.show{display:block}
+
+/* ---------- hero ---------- */
+.hero{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:18px;
+}
+.hero .cell{background:linear-gradient(180deg,#101a26,#0d141d);padding:12px 16px}
+.hero .cell .k{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.hero .cell .v{font-size:22px;font-weight:700;color:var(--cyan);transition:color .2s}
+.hero .cell .v small{font-size:11px;color:var(--dim);font-weight:400}
+.hero .cell.warn .v{color:var(--amber)}
+
+/* ---------- topology cards ---------- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:1350px){.cards{grid-template-columns:1fr}}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;position:relative}
+.tcard h3{font-size:13px;letter-spacing:.15em;color:var(--txt);text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.badge{font-size:9px;letter-spacing:.1em;padding:2px 7px;border-radius:3px;text-transform:uppercase;font-weight:700}
+.badge.custom{background:#2a1533;color:var(--violet);border:1px solid #4d2a5e;display:none}
+.badge.custom.show{display:inline-block}
+svg.schem{width:100%;height:auto;display:block;margin:6px 0 10px}
+svg.schem text{font-family:var(--mono);fill:var(--txt)}
+svg.schem .wire{stroke:#3d5266;stroke-width:1.5;fill:none}
+svg.schem .comp{stroke:var(--cyan);stroke-width:1.5;fill:#0b1520}
+svg.schem .rlabel{fill:var(--cyan);font-size:11px;font-weight:700}
+svg.schem .rname{fill:var(--dim);font-size:9px}
+svg.schem .port{fill:var(--dim);font-size:10px;letter-spacing:.1em}
+svg.schem .gnd{stroke:#3d5266;stroke-width:1.5}
+.res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.res-grid .rbox{background:var(--card2);border:1px solid var(--line2);border-radius:5px;padding:8px}
+.res-grid .rbox .rn{font-size:10px;color:var(--dim);margin-bottom:4px;display:flex;justify-content:space-between}
+.res-grid .rbox input{width:100%}
+.res-grid .rbox .e96{font-size:10px;color:var(--dimmer);margin-top:4px}
+.res-grid .rbox .e96 b{color:var(--teal);font-weight:400}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.warnrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;min-height:20px}
+.wbadge{font-size:10px;background:#2a1f08;border:1px solid #5a4416;color:var(--amber);padding:2px 8px;border-radius:3px}
+.wbadge.red{background:#2a0d0d;border-color:#5a2323;color:var(--red)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:12px}
+@media(max-width:560px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metrics .m{background:var(--card2);padding:8px 10px}
+.metrics .m .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-bottom:3px}
+.metrics .m .v{font-size:13px;color:var(--txt);font-weight:600}
+.metrics .m .v.hi{color:var(--cyan);font-size:15px}
+table.mini{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px}
+table.mini th{color:var(--dimmer);font-weight:400;text-align:left;padding:3px 6px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+table.mini td{padding:3px 6px;border-bottom:1px solid #121b26;color:var(--txt)}
+table.mini td.r{text-align:right}
+table.mini td.warm{color:var(--amber)}
+.subhead{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin:10px 0 6px}
+
+/* ---------- collapsible panels ---------- */
+details.bigpanel{background:var(--card);border:1px solid var(--line);border-radius:8px;margin-top:18px;overflow:hidden}
+details.bigpanel summary{
+  cursor:pointer;list-style:none;padding:13px 16px;font-size:12px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--txt);display:flex;align-items:center;gap:10px;user-select:none;
+}
+details.bigpanel summary::-webkit-details-marker{display:none}
+details.bigpanel summary:before{content:'▸';color:var(--cyan);transition:transform .2s}
+details.bigpanel[open] summary:before{transform:rotate(90deg)}
+details.bigpanel .inner{padding:0 16px 16px;border-top:1px solid var(--line)}
+.split-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:900px){.split-grid{grid-template-columns:1fr}}
+.stage{background:var(--card2);border:1px solid var(--line2);border-radius:6px;padding:12px}
+.stage h4{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:8px}
+.stage table.mini td{color:var(--txt)}
+.split-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:14px}
+.split-summary .m{background:var(--card2);padding:8px 10px}
+.split-summary .m .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-bottom:3px}
+.split-summary .m .v{font-size:13px;color:var(--cyan);font-weight:600}
+.solver-out{background:var(--card2);border:1px solid var(--line2);border-radius:6px;padding:12px;margin-top:12px;line-height:1.7;font-size:12px}
+.solver-out .big{font-size:18px;color:var(--cyan);font-weight:700}
+.solver-out .diag{color:var(--amber)}
+.solver-out .err{color:var(--red)}
+.footer{
+  padding:14px calc(22px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
+  color:var(--dimmer);font-size:10px;text-align:center;letter-spacing:.08em;
+}
+.flexrow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.flexrow .ctl{flex:1;min-width:200px;margin-bottom:8px}
+.benefit{color:var(--green);font-size:11px;margin-top:8px;line-height:1.6}
+/* ---- built-in help ---- */
+#helpBtn{
+  margin-left:auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--line2);
+  background:transparent;color:var(--dim);font-family:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;line-height:1;
+}
+#helpBtn:hover{color:var(--cyan);border-color:var(--cyan-dim)}
+#helpBtn.on{background:#2a1f08;border-color:#8a6a1e;color:var(--amber)}
+body.helpmode, body.helpmode *{cursor:help !important}
+body.helpmode [data-help]{outline:1px dashed rgba(255,180,84,.4);outline-offset:2px;border-radius:2px}
+body.helpmode [data-help]:hover{outline-color:var(--amber);background:rgba(255,180,84,.06)}
+#helpPop{
+  display:none;position:fixed;z-index:999;max-width:360px;min-width:240px;
+  background:#111f27;border:1px solid #8a6a1e;border-radius:6px;padding:12px 14px;
+  box-shadow:0 8px 30px rgba(0,0,0,.6);font-size:11.5px;line-height:1.55;color:var(--fg);
+}
+#helpPop.show{display:block}
+#helpPop h4{margin:0 0 6px;font-size:12px;color:var(--amber);letter-spacing:.04em}
+#helpPop .hclose{position:absolute;top:6px;right:9px;color:var(--dim);cursor:pointer;font-size:13px}
+#helpPop .hclose:hover{color:var(--fg)}
+#helpPop .hf{font-family:inherit;color:var(--cyan);background:#0b2530;border-radius:3px;padding:0 4px;white-space:nowrap}
+#helpPop .hrel{margin-top:8px;font-size:10px;color:var(--dim)}
+#helpPop .hrel span{color:var(--cyan);cursor:pointer;text-decoration:underline dotted;margin-right:8px}
+#helpPop .hidx{margin-top:8px;font-size:10px;color:var(--dim);cursor:pointer;text-decoration:underline dotted}
+#helpPop .hlist{max-height:260px;overflow-y:auto;margin-top:6px;columns:2;column-gap:14px}
+#helpPop .hlist span{display:block;color:var(--cyan);cursor:pointer;font-size:10.5px;padding:1px 0;text-decoration:underline dotted}
+#helpHint{
+  display:none;position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:998;
+  background:#2a1f08;border:1px solid #8a6a1e;color:var(--amber);font-size:10.5px;
+  padding:6px 14px;border-radius:20px;pointer-events:none;
+}
+body.helpmode #helpHint{display:block}
+
+/* ---------- touch targets on phones and tablets ---------- */
+@media(max-width:1100px){
+  .ctl label{gap:8px;align-items:flex-start;font-size:12px}
+  input[type=range]{height:8px;min-height:44px}
+  input[type=range]::-webkit-slider-thumb{width:26px;height:26px}
+  input[type=range]::-moz-range-thumb{width:24px;height:24px}
+  input[type=text].num{width:100px;min-height:44px;padding:9px;font-size:16px}
+  .btn,.btn.small,.unit-toggle button{min-height:44px}
+  .btn.small{padding:8px 10px;font-size:11px}
+  .unit-toggle button{padding:8px;font-size:11px}
+  #helpBtn{width:44px;height:44px;flex:0 0 44px}
+  details.bigpanel summary{min-height:44px}
+}
+
+/* ---------- phone layout ---------- */
+@media(max-width:600px){
+  body{min-height:100svh}
+  header{
+    gap:10px;
+    padding:calc(10px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));
+  }
+  header h1{
+    flex:1 1 220px;min-width:0;white-space:normal;font-size:14px;line-height:1.35;
+  }
+  header h1 span{display:block;font-size:12px}
+  main{
+    gap:12px;
+    padding:12px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  }
+  .panel,.tcard{padding:14px}
+  .res-grid{grid-template-columns:1fr;gap:8px}
+  .card-actions .btn{flex:1 1 135px}
+  .hero{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:12px}
+  .hero .cell:last-child{grid-column:1/-1}
+  details.bigpanel{margin-top:12px}
+  details.bigpanel summary{padding:12px 14px}
+  #helpPop{min-width:0;max-width:calc(100vw - 24px)}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RF Attenuator <span>// Designer &amp; Analyzer</span></h1>
+  <span class="selftest" id="selftestBadge" role="status" aria-live="polite">self-tests…</span>
+  <button id="helpBtn" type="button" aria-label="Help" aria-pressed="false" title="Help mode — click any label for an explanation">?</button>
+</header>
+<div id="helpHint">HELP MODE — click any highlighted item for an explanation · Esc or ? to exit</div>
+<div id="helpPop"></div>
+
+<main>
+  <!-- ============ LEFT: GLOBAL CONTROLS ============ -->
+  <div>
+    <div class="panel">
+      <h2>Design Targets</h2>
+
+      <div class="ctl">
+        <label>Attenuation <span class="u">dB (power, matched)</span></label>
+        <div class="row">
+          <input type="range" id="attSlider" min="0" max="60" step="0.01" value="20" aria-label="Attenuation in decibels">
+          <input type="text" class="num" id="attField" value="20.00" inputmode="decimal" aria-label="Attenuation in decibels">
+        </div>
+        <div class="clampnote" id="attNote"></div>
+      </div>
+
+      <div class="ctl">
+        <label>Voltage ratio <span class="u">÷N (at load, matched design)</span></label>
+        <div class="row">
+          <input type="text" class="num" id="ratioField" value="10.000" inputmode="decimal" aria-label="Voltage ratio" style="width:120px">
+          <span style="font-size:10px;color:var(--dimmer)">dB = 20·log₁₀(N) when Z_S = Z_L</span>
+        </div>
+        <div class="clampnote" id="ratioNote"></div>
+      </div>
+
+      <div class="ctl">
+        <label>Design source impedance Z_S <span class="u">Ω</span></label>
+        <div class="row">
+          <input type="range" id="zsSlider" min="0" max="1000" value="0" aria-label="Design source impedance in ohms">
+          <input type="text" class="num" id="zsField" value="50" inputmode="decimal" aria-label="Design source impedance in ohms">
+        </div>
+        <div class="clampnote" id="zsNote"></div>
+      </div>
+
+      <div class="ctl">
+        <label>Design load impedance Z_L <span class="u">Ω</span></label>
+        <div class="row">
+          <input type="range" id="zlSlider" min="0" max="1000" value="0" aria-label="Design load impedance in ohms">
+          <input type="text" class="num" id="zlField" value="50" inputmode="decimal" aria-label="Design load impedance in ohms">
+        </div>
+        <div class="clampnote" id="zlNote"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn primary" id="redesignBtn">⟳ Redesign Pads</button>
+        <button class="btn" id="minLossBtn" style="display:none">Min-loss pad</button>
+      </div>
+      <div class="minloss-note" id="minLossNote"></div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Operating Conditions</h2>
+
+      <div class="ctl">
+        <label>Input drive
+          <span class="unit-toggle">
+            <button type="button" id="unitVpk" class="on" aria-label="Use Vpk input units">Vpk</button><button type="button" id="unitVrms" aria-label="Use Vrms input units">Vrms</button><button type="button" id="unitdBm" aria-label="Use dBm input units">dBm</button><button type="button" id="unitW" aria-label="Use watt input units">W</button>
+          </span>
+        </label>
+        <div class="row">
+          <input type="range" id="vinSlider" min="0" max="1000" value="0" aria-label="Input drive value">
+          <input type="text" class="num" id="vinField" value="1.000" inputmode="decimal" aria-label="Input drive value">
+        </div>
+        <div class="clampnote" id="vinNote"></div>
+        <div style="font-size:10px;color:var(--dimmer);margin-top:4px;line-height:1.5" id="driveHint"></div>
+      </div>
+
+      <div class="ctl">
+        <label>Actual load R_L <span class="u">Ω — what's really connected</span></label>
+        <div class="row">
+          <input type="range" id="rlSlider" min="0" max="1000" value="0" aria-label="Actual load resistance in ohms">
+          <input type="text" class="num" id="rlField" value="50" inputmode="decimal" aria-label="Actual load resistance in ohms">
+        </div>
+        <div class="clampnote" id="rlNote"></div>
+      </div>
+
+      <div class="ctl">
+        <label>Actual source resistance R_S <span class="u">Ω — what's really driving</span></label>
+        <div class="row">
+          <input type="range" id="rsSlider" min="0" max="1000" value="0" aria-label="Actual source resistance in ohms">
+          <input type="text" class="num" id="rsField" value="50" inputmode="decimal" aria-label="Actual source resistance in ohms">
+        </div>
+        <div class="clampnote" id="rsNote"></div>
+      </div>
+      <div style="font-size:10px;color:var(--dimmer);line-height:1.6">
+        R_L / R_S track Z_L / Z_S until you touch them, then become independent.
+        Changing them re-analyzes the loaded resistors — it never redesigns the pad.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: RESULTS ============ -->
+  <div>
+    <div class="hero" id="heroStrip">
+      <div class="cell"><div class="k">T — voltage ratio</div><div class="v" id="heroTRatio">—</div></div>
+      <div class="cell"><div class="k">T — effective dB</div><div class="v" id="heroTdB">—</div></div>
+      <div class="cell"><div class="k">π — voltage ratio</div><div class="v" id="heroPiRatio">—</div></div>
+      <div class="cell"><div class="k">π — effective dB</div><div class="v" id="heroPidB">—</div></div>
+      <div class="cell"><div class="k">V out (T / π)</div><div class="v" id="heroVout" style="font-size:16px">—</div></div>
+    </div>
+
+    <div class="cards">
+      <!-- ================= T CARD ================= -->
+      <div class="tcard" id="cardT">
+        <h3>T pad <span class="badge custom" id="customT">custom</span></h3>
+        <svg class="schem" id="svgT" viewBox="0 0 460 130"></svg>
+        <div class="res-grid">
+          <div class="rbox">
+            <div class="rn"><span>R1a · series (in)</span><span>Ω</span></div>
+            <input type="text" class="num" id="t_r1a" inputmode="decimal" aria-label="T pad input series resistor R1a in ohms">
+            <div class="e96">E96: <b id="t_r1a_e96">—</b></div>
+          </div>
+          <div class="rbox">
+            <div class="rn"><span>R2 · shunt</span><span>Ω</span></div>
+            <input type="text" class="num" id="t_r2" inputmode="decimal" aria-label="T pad shunt resistor R2 in ohms">
+            <div class="e96">E96: <b id="t_r2_e96">—</b></div>
+          </div>
+          <div class="rbox">
+            <div class="rn"><span>R1b · series (out)</span><span>Ω</span></div>
+            <input type="text" class="num" id="t_r1b" inputmode="decimal" aria-label="T pad output series resistor R1b in ohms">
+            <div class="e96">E96: <b id="t_r1b_e96">—</b></div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn small" id="tApplyE96">Apply E96 values</button>
+          <button class="btn small" id="tUndo" disabled>Undo manual edits</button>
+          <button class="btn small" id="tRedesign">Redesign T</button>
+        </div>
+        <div class="warnrow" id="tWarns"></div>
+        <div class="metrics" id="tMetrics"></div>
+        <div class="subhead">Power dissipation</div>
+        <table class="mini" id="tPower"></table>
+        <div class="subhead">Node voltages</div>
+        <table class="mini" id="tNodes"></table>
+      </div>
+
+      <!-- ================= PI CARD ================= -->
+      <div class="tcard" id="cardPi">
+        <h3>π pad <span class="badge custom" id="customPi">custom</span></h3>
+        <svg class="schem" id="svgPi" viewBox="0 0 460 130"></svg>
+        <div class="res-grid">
+          <div class="rbox">
+            <div class="rn"><span>Rsh1 · shunt (in)</span><span>Ω</span></div>
+            <input type="text" class="num" id="p_rsh1" inputmode="decimal" aria-label="Pi pad input shunt resistor Rsh1 in ohms">
+            <div class="e96">E96: <b id="p_rsh1_e96">—</b></div>
+          </div>
+          <div class="rbox">
+            <div class="rn"><span>Rs · series</span><span>Ω</span></div>
+            <input type="text" class="num" id="p_rs" inputmode="decimal" aria-label="Pi pad series resistor Rs in ohms">
+            <div class="e96">E96: <b id="p_rs_e96">—</b></div>
+          </div>
+          <div class="rbox">
+            <div class="rn"><span>Rsh2 · shunt (out)</span><span>Ω</span></div>
+            <input type="text" class="num" id="p_rsh2" inputmode="decimal" aria-label="Pi pad output shunt resistor Rsh2 in ohms">
+            <div class="e96">E96: <b id="p_rsh2_e96">—</b></div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn small" id="pApplyE96">Apply E96 values</button>
+          <button class="btn small" id="pUndo" disabled>Undo manual edits</button>
+          <button class="btn small" id="pRedesign">Redesign π</button>
+        </div>
+        <div class="warnrow" id="pWarns"></div>
+        <div class="metrics" id="pMetrics"></div>
+        <div class="subhead">Power dissipation</div>
+        <table class="mini" id="pPower"></table>
+        <div class="subhead">Node voltages</div>
+        <table class="mini" id="pNodes"></table>
+      </div>
+    </div>
+
+    <!-- ================= SPLIT PAD ================= -->
+    <details class="bigpanel" id="splitPanel">
+      <summary>Split Pad — cascade two stages</summary>
+      <div class="inner">
+        <div class="flexrow" style="margin-top:14px">
+          <div class="ctl">
+            <label>Stage 1 attenuation <span class="u">dB (stage 2 = remainder)</span></label>
+            <div class="row">
+              <input type="range" id="s1Slider" min="0" max="60" step="0.01" value="10" aria-label="Stage 1 attenuation in decibels">
+              <input type="text" class="num" id="s1Field" value="10.00" inputmode="decimal" aria-label="Stage 1 attenuation in decibels">
+            </div>
+            <div class="clampnote" id="s1Note"></div>
+          </div>
+          <div class="ctl">
+            <label>Mid impedance Z_mid <span class="u">Ω (stage1: Z_S→Z_mid, stage2: Z_mid→Z_L)</span></label>
+            <div class="row">
+              <input type="range" id="zmidSlider" min="0" max="1000" value="0" aria-label="Interstage impedance in ohms">
+              <input type="text" class="num" id="zmidField" value="50" inputmode="decimal" aria-label="Interstage impedance in ohms">
+            </div>
+            <div class="clampnote" id="zmidNote"></div>
+          </div>
+          <div style="margin-bottom:8px"><button class="btn" id="eqSplitBtn">Equal split</button></div>
+        </div>
+        <div class="warnrow" id="splitWarns"></div>
+        <div class="split-grid" id="splitStages"></div>
+        <div class="split-summary" id="splitSummary"></div>
+        <div class="benefit" id="splitBenefit"></div>
+      </div>
+    </details>
+
+    <!-- ================= MISMATCH SOLVER ================= -->
+    <details class="bigpanel" id="solverPanel">
+      <summary>Impedance-Mismatch Solver — “I measured a different ratio”</summary>
+      <div class="inner">
+        <div class="flexrow" style="margin-top:14px">
+          <div class="ctl" style="max-width:220px">
+            <label>Topology</label>
+            <div class="unit-toggle">
+              <button type="button" id="solvT" class="on" aria-label="Use T topology in mismatch solver">T</button><button type="button" id="solvPi" aria-label="Use Pi topology in mismatch solver">π</button>
+            </div>
+          </div>
+          <div class="ctl" style="max-width:220px">
+            <label>Measured voltage ratio ÷N</label>
+            <input type="text" class="num" id="measRatio" value="" inputmode="decimal" aria-label="Measured voltage ratio" style="width:120px">
+            <div class="clampnote" id="measRatioNote"></div>
+          </div>
+          <div class="ctl" style="max-width:220px">
+            <label>…or measured dB</label>
+            <input type="text" class="num" id="measDb" value="" inputmode="decimal" aria-label="Measured attenuation in decibels" style="width:120px">
+            <div class="clampnote" id="measDbNote"></div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--dimmer);margin-bottom:4px">
+          Uses the resistors currently loaded in the selected card (designed or custom). The measured ratio is
+          V<sub>pad&nbsp;in</sub>&nbsp;/&nbsp;V<sub>out</sub>. Solves the exact network for the load that produces your ratio.
+        </div>
+        <div class="solver-out" id="solverOut">Enter a measured ratio or dB above.</div>
+      </div>
+    </details>
+  </div>
+</main>
+
+<div class="footer">purely resistive model · all values exact until display (4 sig figs) · self-test results in console</div>
+
+<script>
+'use strict';
+/* ============================================================
+   MATH CORE — plain unit-testable functions
+   ============================================================ */
+const log10 = x => Math.log(x)/Math.LN10;
+const dbFromN = N => 20*log10(N);
+const nFromDb = db => Math.pow(10, db/20);
+function par(a,b){
+  if(!isFinite(a)) return b;
+  if(!isFinite(b)) return a;
+  if(a<=0||b<=0) return 0;
+  return a*b/(a+b);
+}
+const clampNum = (v,lo,hi) => Math.min(hi, Math.max(lo, v));
+
+/* ---- design: unequal-impedance matched pad; K = 10^(dB/10) ---- */
+function aMin(z1, z2){
+  if (Math.abs(z1-z2) < 1e-12) return 0;
+  const r = Math.max(z1,z2)/Math.min(z1,z2);
+  return 20*log10(Math.sqrt(r) + Math.sqrt(r-1));
+}
+function designT(db, zs, zl){
+  const K = Math.pow(10, db/10);
+  if (K <= 1.0000001) return {r1a:0, r2:Infinity, r1b:0};
+  const r2  = 2*Math.sqrt(zs*zl*K)/(K-1);
+  let r1a = zs*(K+1)/(K-1) - r2;
+  let r1b = zl*(K+1)/(K-1) - r2;
+  if (r1a < 1e-9) r1a = 0;
+  if (r1b < 1e-9) r1b = 0;
+  return {r1a, r2, r1b};
+}
+function designPi(db, zs, zl){
+  const K = Math.pow(10, db/10);
+  if (K <= 1.0000001) return {rsh1:Infinity, rs:0, rsh2:Infinity};
+  const rs = (K-1)/2 * Math.sqrt(zs*zl/K);
+  const g1 = (K+1)/(zs*(K-1)) - 1/rs;
+  const g2 = (K+1)/(zl*(K-1)) - 1/rs;
+  const rsh1 = (g1 > 1e-12) ? 1/g1 : Infinity;
+  const rsh2 = (g2 > 1e-12) ? 1/g2 : Infinity;
+  return {rsh1, rs, rsh2};
+}
+
+/* ---- exact network analysis ---- */
+/* T: r1a series in, r2 shunt, r1b series out */
+function analyzeT(r, RL, RS){
+  const zsh  = par(r.r2, r.r1b + RL);
+  const zin  = r.r1a + zsh;
+  const vout_over_vin = (zsh/zin) * (RL/(r.r1b + RL));
+  const zout = r.r1b + par(r.r2, r.r1a + RS);
+  return {zin, zout, tf: vout_over_vin};
+}
+/* Pi: rsh1 shunt in, rs series, rsh2 shunt out */
+function analyzePi(r, RL, RS){
+  const rlp  = par(r.rsh2, RL);
+  const zin  = par(r.rsh1, r.rs + rlp);
+  const vout_over_vin = rlp/(r.rs + rlp);
+  const zout = par(r.rsh2, r.rs + par(r.rsh1, RS));
+  return {zin, zout, tf: vout_over_vin};
+}
+/* node voltages + per-resistor power. vinPad = voltage at pad input (rms for power). */
+function powerT(r, RL, vinPad){
+  const a = analyzeT(r, RL, 1e12);
+  const iin = vinPad/a.zin;
+  const vmid = vinPad * (a.zin - r.r1a)/a.zin;
+  const iout = vmid/(r.r1b + RL);
+  return {
+    nodes:{vin:vinPad, vmid, vout:iout*RL},
+    p:[
+      {name:'R1a (series in)',  val:r.r1a, w:iin*iin*r.r1a},
+      {name:'R2 (shunt)',       val:r.r2,  w:isFinite(r.r2)? vmid*vmid/r.r2 : 0},
+      {name:'R1b (series out)', val:r.r1b, w:iout*iout*r.r1b},
+    ],
+    pload: iout*iout*RL,
+    pin: vinPad*vinPad/a.zin
+  };
+}
+function powerPi(r, RL, vinPad){
+  const rlp = par(r.rsh2, RL);
+  const vout = vinPad * rlp/(r.rs + rlp);
+  const is = (vinPad - vout)/r.rs;
+  const a = analyzePi(r, RL, 1e12);
+  return {
+    nodes:{vin:vinPad, vmid:null, vout},
+    p:[
+      {name:'Rsh1 (shunt in)',  val:r.rsh1, w:isFinite(r.rsh1)? vinPad*vinPad/r.rsh1 : 0},
+      {name:'Rs (series)',      val:r.rs,   w:is*is*r.rs},
+      {name:'Rsh2 (shunt out)', val:r.rsh2, w:isFinite(r.rsh2)? vout*vout/r.rsh2 : 0},
+    ],
+    pload: vout*vout/RL,
+    pin: vinPad*vinPad/a.zin
+  };
+}
+function returnLoss(z, zref){
+  const g = Math.abs((z - zref)/(z + zref));
+  return {
+    gamma:g,
+    rl: g < 1e-9 ? Infinity : -20*log10(g),
+    vswr: g >= 1 ? Infinity : (1+g)/(1-g)
+  };
+}
+/* solve RL producing a given measured ratio (V_padIn / V_out) */
+function solveLoad(analyzeFn, r, RS, measured){
+  const ratioAt = RL => 1/analyzeFn(r, RL, RS).tf;
+  const rMin = ratioAt(1e11);           // open-circuit floor
+  const rMax = ratioAt(1e-4);           // near-short ceiling
+  if (measured < rMin*0.99999) return {ok:false, floor:rMin};
+  if (measured > rMax) return {ok:false, ceil:rMax};
+  let lo = -4, hi = 11;                  // log10(RL)
+  for(let i=0;i<200;i++){
+    const mid = (lo+hi)/2;
+    if (ratioAt(Math.pow(10,mid)) > measured) lo = mid; else hi = mid;
+  }
+  return {ok:true, RL: Math.pow(10,(lo+hi)/2), floor:rMin};
+}
+
+/* ---- E96 ---- */
+const E96M = (()=>{ const m=[]; for(let i=0;i<96;i++) m.push(Math.round(Math.pow(10,i/96)*100)/100); return m; })();
+function nearestE96(v){
+  if(!isFinite(v) || v<=0) return v;
+  const e = Math.floor(log10(v));
+  let best = v, bd = Infinity;
+  for(const d of [e-1,e,e+1]) for(const m of E96M){
+    const c = m*Math.pow(10,d);
+    const err = Math.abs(c-v);
+    if(err<bd){bd=err;best=c;}
+  }
+  return best;
+}
+
+/* ---- formatting ---- */
+function sig(v, n=4){
+  if(v===null||v===undefined||Number.isNaN(v)) return '—';
+  if(!isFinite(v)) return '∞';
+  if(v===0) return '0';
+  const av=Math.abs(v);
+  if(av>=1e-3 && av<1e7) {
+    const p = Math.max(0, n-1-Math.floor(log10(av)));
+    return v.toFixed(Math.min(p,6)).replace(/\.?0+$/,'');
+  }
+  return v.toExponential(n-1);
+}
+function fmtOhm(v){
+  if(!isFinite(v)) return '∞ (open)';
+  if(v < 5e-3) return '0 Ω (wire)';
+  if(v >= 1e6) return sig(v/1e6)+' MΩ';
+  if(v >= 1e3) return sig(v/1e3)+' kΩ';
+  return sig(v)+' Ω';
+}
+function fmtV(v){
+  if(!isFinite(v)||Number.isNaN(v)) return '—';
+  const av=Math.abs(v);
+  if(av>=1) return sig(v)+' V';
+  if(av>=1e-3) return sig(v*1e3)+' mV';
+  if(av>=1e-6) return sig(v*1e6)+' µV';
+  return sig(v*1e9)+' nV';
+}
+function fmtW(v){
+  if(!isFinite(v)||Number.isNaN(v)) return '—';
+  const av=Math.abs(v);
+  if(av>=1) return sig(v)+' W';
+  if(av>=1e-3) return sig(v*1e3)+' mW';
+  if(av>=1e-6) return sig(v*1e6)+' µW';
+  return sig(v*1e9)+' nW';
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  att: 20, vin: 1, vunit: 'Vpk',   // vin = value in the currently selected unit
+  zs: 50, zl: 50, rl: 50, rs: 50,
+  rlTouched: false, rsTouched: false,
+  stale: false,
+  tDes: null, piDes: null,      // last designed values
+  tCur: null, piCur: null,      // currently loaded values
+  tCustom: false, piCustom: false,
+  s1: 10, zmid: 50, s1Touched:false,
+  solvTopo: 'T'
+};
+
+/* ============================================================
+   CONTROL BINDING — slider+field pairs with clamp-and-notify
+   ============================================================ */
+function note(id, msg){
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+function parseNum(s){
+  if(typeof s!=='string') return NaN;
+  const v = Number(s.trim());
+  return (s.trim()==='' ? NaN : v);
+}
+/* generic log slider mapping over [min,max], slider 0..1000 */
+function logCtl(sliderId, fieldId, noteId, min, max, getter, setter, fmt){
+  const sl = document.getElementById(sliderId), f = document.getElementById(fieldId);
+  const toPos = v => Math.round(1000*(log10(v)-log10(min))/(log10(max)-log10(min)));
+  const toVal = p => Math.pow(10, log10(min) + (p/1000)*(log10(max)-log10(min)));
+  const show = ()=>{ const v=getter(); sl.value = toPos(clampNum(v,min,max)); f.value = fmt?fmt(v):sig(v); };
+  sl.addEventListener('input', ()=>{ setter(toVal(+sl.value)); f.value = fmt?fmt(getter()):sig(getter()); });
+  const commit = ()=>{
+    const v = parseNum(f.value);
+    if(Number.isNaN(v)){ note(noteId,'invalid — reverted'); show(); return; }
+    let c = clampNum(v,min,max);
+    if(c!==v) note(noteId, v<min?('clamped to min '+sig(min)):('clamped to max '+sig(max)));
+    setter(c); show();
+  };
+  f.addEventListener('blur', commit);
+  f.addEventListener('keydown', e=>{ if(e.key==='Enter'){ commit(); f.blur(); }});
+  return {show};
+}
+/* piecewise ctl for RS: linear 0..1Ω on first 5%, log 1..10k after */
+function rsCtl(){
+  const sl=document.getElementById('rsSlider'), f=document.getElementById('rsField');
+  const toPos = v => v<=1 ? Math.round(v*50) : Math.round(50 + 950*log10(v)/4);
+  const toVal = p => p<=50 ? p/50 : Math.pow(10, (p-50)*4/950);
+  const show = ()=>{ sl.value=toPos(clampNum(S.rs,0,10000)); f.value=sig(S.rs); };
+  sl.addEventListener('input', ()=>{ S.rs=toVal(+sl.value); S.rsTouched=true; f.value=sig(S.rs); recalcAll(); });
+  const commit = ()=>{
+    const v=parseNum(f.value);
+    if(Number.isNaN(v)){ note('rsNote','invalid — reverted'); show(); return; }
+    let c=clampNum(v,0,10000);
+    if(c!==v) note('rsNote', v<0?'clamped to 0':'clamped to 10 kΩ max');
+    S.rs=c; S.rsTouched=true; show(); recalcAll();
+  };
+  f.addEventListener('blur',commit);
+  f.addEventListener('keydown',e=>{if(e.key==='Enter'){commit();f.blur();}});
+  return {show};
+}
+
+/* attenuation: linear slider, dynamic min */
+const attSl = document.getElementById('attSlider'), attF = document.getElementById('attField');
+const ratioF = document.getElementById('ratioField');
+function attMin(){ return (Math.abs(S.zs-S.zl)>1e-9) ? aMin(S.zs,S.zl) : 0; }
+function showAtt(){
+  attSl.min = attMin().toFixed(2);
+  attSl.value = S.att;
+  attF.value = S.att.toFixed(2);
+  ratioF.value = sig(nFromDb(S.att));
+}
+function setAtt(v, src){
+  const lo = attMin();
+  let c = clampNum(v, lo, 60);
+  if(c!==v && src!=='slider'){
+    note('attNote', v<lo ? ('clamped to A_min '+lo.toFixed(2)+' dB (unequal Z)') : 'clamped to 60 dB max');
+  }
+  S.att = c; markStale(); showAtt(); recalcAll();
+}
+attSl.addEventListener('input', ()=> setAtt(+attSl.value,'slider'));
+attF.addEventListener('blur', ()=>{ const v=parseNum(attF.value); if(Number.isNaN(v)){note('attNote','invalid — reverted');showAtt();return;} setAtt(v); });
+attF.addEventListener('keydown', e=>{ if(e.key==='Enter'){attF.blur();}});
+ratioF.addEventListener('blur', ()=>{
+  const v=parseNum(ratioF.value);
+  if(Number.isNaN(v)||v<1){note('ratioNote', Number.isNaN(v)?'invalid — reverted':'ratio must be ≥ 1 — reverted');showAtt();return;}
+  setAtt(dbFromN(v));
+});
+ratioF.addEventListener('keydown', e=>{ if(e.key==='Enter'){ratioF.blur();}});
+
+/* ---- input drive: voltage OR power, unit-aware slider mapping ---- */
+const VIN_UNITS = {
+  Vpk : {min:0.001, max:100, log:true },
+  Vrms: {min:0.001, max:100, log:true },
+  dBm : {min:-60,   max:50,  log:false},   // linear slider (dBm is already log-scaled)
+  W   : {min:1e-9,  max:100, log:true }
+};
+/* pure, unit-testable: drive value+unit -> Vrms at the pad input (power delivered into zin) */
+function driveVrmsU(val, unit, zin){
+  switch(unit){
+    case 'Vpk' : return val/Math.SQRT2;
+    case 'Vrms': return val;
+    case 'dBm' : return Math.sqrt(Math.pow(10,(val-30)/10)*zin);
+    default    : return Math.sqrt(val*zin);           // W
+  }
+}
+const driveVrms = zin => driveVrmsU(S.vin, S.vunit, zin);
+const isPowerUnit = ()=> S.vunit==='dBm' || S.vunit==='W';
+const dispUnit  = ()=> S.vunit==='Vpk' ? 'Vpk' : 'Vrms';
+const dispScale = ()=> S.vunit==='Vpk' ? Math.SQRT2 : 1;
+
+function vinCtl(){
+  const sl=document.getElementById('vinSlider'), f=document.getElementById('vinField');
+  const cfg=()=>VIN_UNITS[S.vunit];
+  const toPos=v=>{const c=cfg(); return c.log
+    ? Math.round(1000*(log10(v)-log10(c.min))/(log10(c.max)-log10(c.min)))
+    : Math.round(1000*(v-c.min)/(c.max-c.min));};
+  const toVal=p=>{const c=cfg(); return c.log
+    ? Math.pow(10, log10(c.min)+(p/1000)*(log10(c.max)-log10(c.min)))
+    : c.min+(p/1000)*(c.max-c.min);};
+  const show=()=>{const c=cfg(); sl.value=toPos(clampNum(S.vin,c.min,c.max)); f.value=sig(S.vin);};
+  sl.addEventListener('input',()=>{S.vin=toVal(+sl.value); f.value=sig(S.vin); recalcAll();});
+  const commit=()=>{
+    const v=parseNum(f.value), c=cfg();
+    if(Number.isNaN(v)){ note('vinNote','invalid — reverted'); show(); return; }
+    let cl=clampNum(v,c.min,c.max);
+    if(cl!==v) note('vinNote', v<c.min?('clamped to min '+sig(c.min)):('clamped to max '+sig(c.max)));
+    S.vin=cl; show(); recalcAll();
+  };
+  f.addEventListener('blur',commit);
+  f.addEventListener('keydown',e=>{if(e.key==='Enter'){commit();f.blur();}});
+  return {show};
+}
+const vinC = vinCtl();
+const zsC  = logCtl('zsSlider','zsField','zsNote',1,10000,()=>S.zs,v=>{
+  S.zs=v; if(!S.rsTouched){S.rs=v;rsC.show();} markStale(); showAtt(); recalcAll();
+});
+const zlC  = logCtl('zlSlider','zlField','zlNote',1,10000,()=>S.zl,v=>{
+  S.zl=v; if(!S.rlTouched){S.rl=v;rlC.show();} markStale(); showAtt(); recalcAll();
+});
+const rlC  = logCtl('rlSlider','rlField','rlNote',1,1e6,()=>S.rl,v=>{S.rl=v;S.rlTouched=true;recalcAll();});
+const rsC  = rsCtl();
+const zmidC= logCtl('zmidSlider','zmidField','zmidNote',1,10000,()=>S.zmid,v=>{S.zmid=v;recalcAll();});
+
+/* split stage-1 slider */
+const s1Sl=document.getElementById('s1Slider'), s1F=document.getElementById('s1Field');
+function showS1(){ s1Sl.max=S.att.toFixed(2); if(!S.s1Touched) S.s1=S.att/2; S.s1=clampNum(S.s1,0,S.att); s1Sl.value=S.s1; s1F.value=S.s1.toFixed(2); }
+s1Sl.addEventListener('input', ()=>{ S.s1=+s1Sl.value; S.s1Touched=true; s1F.value=S.s1.toFixed(2); recalcAll(); });
+s1F.addEventListener('blur', ()=>{
+  const v=parseNum(s1F.value);
+  if(Number.isNaN(v)){note('s1Note','invalid — reverted');showS1();return;}
+  const c=clampNum(v,0,S.att);
+  if(c!==v) note('s1Note','clamped to 0…'+S.att.toFixed(2)+' dB');
+  S.s1=c; S.s1Touched=true; showS1(); recalcAll();
+});
+s1F.addEventListener('keydown',e=>{if(e.key==='Enter'){s1F.blur();}});
+document.getElementById('eqSplitBtn').addEventListener('click',()=>{S.s1=S.att/2;S.s1Touched=true;showS1();recalcAll();});
+
+/* unit toggle — switching units converts the current drive so the physical
+   stimulus is preserved (V↔P conversion referenced to the T pad's actual Zin) */
+function setVUnit(u){
+  if(u===S.vunit){ return; }
+  const z = S.tCur ? analyzeT(S.tCur,S.rl,S.rs).zin : 50;
+  const vr = driveVrms(z);                 // physical drive as Vrms into z
+  S.vunit=u;
+  switch(u){
+    case 'Vpk' : S.vin = vr*Math.SQRT2; break;
+    case 'Vrms': S.vin = vr; break;
+    case 'dBm' : S.vin = 10*log10(Math.max(vr*vr/z*1000, 1e-12)); break;
+    case 'W'   : S.vin = vr*vr/z; break;
+  }
+  const c=VIN_UNITS[u]; S.vin=clampNum(S.vin,c.min,c.max);
+  unitBtns(); vinC.show(); recalcAll();
+}
+['Vpk','Vrms','dBm','W'].forEach(u=>{
+  document.getElementById('unit'+(u==='dBm'?'dBm':u==='W'?'W':u)).addEventListener('click',()=>setVUnit(u));
+});
+function unitBtns(){
+  document.getElementById('unitVpk').classList.toggle('on',S.vunit==='Vpk');
+  document.getElementById('unitVrms').classList.toggle('on',S.vunit==='Vrms');
+  document.getElementById('unitdBm').classList.toggle('on',S.vunit==='dBm');
+  document.getElementById('unitW').classList.toggle('on',S.vunit==='W');
+  document.getElementById('unitVpk').setAttribute('aria-pressed',S.vunit==='Vpk');
+  document.getElementById('unitVrms').setAttribute('aria-pressed',S.vunit==='Vrms');
+  document.getElementById('unitdBm').setAttribute('aria-pressed',S.vunit==='dBm');
+  document.getElementById('unitW').setAttribute('aria-pressed',S.vunit==='W');
+  document.getElementById('driveHint').textContent = isPowerUnit()
+    ? 'Power is delivered into each pad\u2019s actual Z_in (with the current R_L) \u2014 so the equivalent input voltage can differ slightly between the T and \u03c0 cards.'
+    : 'Voltage defined at the pad input terminals.';
+}
+
+/* ============================================================
+   DESIGN / RESET LOGIC
+   ============================================================ */
+function markStale(){
+  S.stale=true;
+  const b=document.getElementById('redesignBtn');
+  b.classList.add('stale');
+  b.textContent='⟳ Redesign Pads (design stale)';
+}
+function clearStale(){
+  S.stale=false;
+  const b=document.getElementById('redesignBtn');
+  b.classList.remove('stale');
+  b.textContent='⟳ Redesign Pads';
+}
+function redesign(which){
+  const t = designT(S.att,S.zs,S.zl), p = designPi(S.att,S.zs,S.zl);
+  if(which==='T'||which==='all'){ S.tDes={...t}; S.tCur={...t}; S.tCustom=false; }
+  if(which==='Pi'||which==='all'){ S.piDes={...p}; S.piCur={...p}; S.piCustom=false; }
+  if(which==='all') clearStale();
+  recalcAll();
+}
+document.getElementById('redesignBtn').addEventListener('click',()=>redesign('all'));
+document.getElementById('tRedesign').addEventListener('click',()=>redesign('T'));
+document.getElementById('pRedesign').addEventListener('click',()=>redesign('Pi'));
+document.getElementById('tUndo').addEventListener('click',()=>{S.tCur={...S.tDes};S.tCustom=false;recalcAll();});
+document.getElementById('pUndo').addEventListener('click',()=>{S.piCur={...S.piDes};S.piCustom=false;recalcAll();});
+document.getElementById('minLossBtn').addEventListener('click',()=>{
+  S.att = attMin()+1e-9; showAtt(); redesign('all');
+});
+document.getElementById('tApplyE96').addEventListener('click',()=>{
+  S.tCur={r1a:nearestE96(S.tCur.r1a),r2:nearestE96(S.tCur.r2),r1b:nearestE96(S.tCur.r1b)};
+  S.tCustom=true; recalcAll();
+});
+document.getElementById('pApplyE96').addEventListener('click',()=>{
+  S.piCur={rsh1:nearestE96(S.piCur.rsh1),rs:nearestE96(S.piCur.rs),rsh2:nearestE96(S.piCur.rsh2)};
+  S.piCustom=true; recalcAll();
+});
+
+/* resistor field binding */
+function bindRes(fieldId,noteless,getObj,key,isT){
+  const f=document.getElementById(fieldId);
+  f.addEventListener('blur',()=>{
+    const raw=f.value.trim();
+    let v;
+    if(/^(inf|∞|open)$/i.test(raw)) v=Infinity;
+    else { v=parseNum(raw); }
+    if(Number.isNaN(v)){ f.value = resDisp(getObj()[key]); return; }
+    if(isFinite(v)) v=clampNum(v,0.001,1e7);
+    getObj()[key]=v;
+    if(isT){S.tCustom=true;} else {S.piCustom=true;}
+    recalcAll();
+  });
+  f.addEventListener('keydown',e=>{if(e.key==='Enter'){f.blur();}});
+}
+function resDisp(v){ return isFinite(v)? sig(v) : '∞'; }
+bindRes('t_r1a',0,()=>S.tCur,'r1a',true);
+bindRes('t_r2',0,()=>S.tCur,'r2',true);
+bindRes('t_r1b',0,()=>S.tCur,'r1b',true);
+bindRes('p_rsh1',0,()=>S.piCur,'rsh1',false);
+bindRes('p_rs',0,()=>S.piCur,'rs',false);
+bindRes('p_rsh2',0,()=>S.piCur,'rsh2',false);
+
+/* ============================================================
+   SVG SCHEMATICS
+   ============================================================ */
+function resBoxH(x,y,label,name){ // horizontal resistor
+  return `<rect class="comp" x="${x}" y="${y-9}" width="52" height="18" rx="2"/>
+    <text class="rlabel" x="${x+26}" y="${y-14}" text-anchor="middle">${label}</text>
+    <text class="rname" x="${x+26}" y="${y+22}" text-anchor="middle">${name}</text>`;
+}
+function resBoxV(x,y,label,name){ // vertical resistor
+  return `<rect class="comp" x="${x-9}" y="${y}" width="18" height="42" rx="2"/>
+    <text class="rlabel" x="${x+15}" y="${y+20}">${label}</text>
+    <text class="rname" x="${x+15}" y="${y+32}">${name}</text>`;
+}
+function gnd(x,y){
+  return `<line class="gnd" x1="${x-9}" y1="${y}" x2="${x+9}" y2="${y}"/>
+    <line class="gnd" x1="${x-6}" y1="${y+4}" x2="${x+6}" y2="${y+4}"/>
+    <line class="gnd" x1="${x-3}" y1="${y+8}" x2="${x+3}" y2="${y+8}"/>`;
+}
+function shortOhm(v){
+  if(!isFinite(v)) return '∞';
+  if(v<5e-3) return '0 (wire)';
+  if(v>=1e6) return sig(v/1e6,4)+'M';
+  if(v>=1e3) return sig(v/1e3,4)+'k';
+  return sig(v,4);
+}
+function drawT(r){
+  const y=42;
+  document.getElementById('svgT').innerHTML =
+    `<text class="port" x="8" y="${y+4}">IN</text>
+     <line class="wire" x1="30" y1="${y}" x2="95" y2="${y}"/>
+     ${resBoxH(95,y,shortOhm(r.r1a),'R1a')}
+     <line class="wire" x1="147" y1="${y}" x2="230" y2="${y}"/>
+     <line class="wire" x1="230" y1="${y}" x2="313" y2="${y}"/>
+     ${resBoxH(313,y,shortOhm(r.r1b),'R1b')}
+     <line class="wire" x1="365" y1="${y}" x2="430" y2="${y}"/>
+     <text class="port" x="432" y="${y+4}">OUT</text>
+     <circle cx="230" cy="${y}" r="2.5" fill="#3d5266"/>
+     <line class="wire" x1="230" y1="${y}" x2="230" y2="${y+16}"/>
+     ${resBoxV(230,y+16,shortOhm(r.r2),'R2')}
+     <line class="wire" x1="230" y1="${y+58}" x2="230" y2="${y+66}"/>
+     ${gnd(230,y+66)}`;
+}
+function drawPi(r){
+  const y=42;
+  document.getElementById('svgPi').innerHTML =
+    `<text class="port" x="8" y="${y+4}">IN</text>
+     <line class="wire" x1="30" y1="${y}" x2="130" y2="${y}"/>
+     <circle cx="130" cy="${y}" r="2.5" fill="#3d5266"/>
+     <line class="wire" x1="130" y1="${y}" x2="204" y2="${y}"/>
+     ${resBoxH(204,y,shortOhm(r.rs),'Rs')}
+     <line class="wire" x1="256" y1="${y}" x2="330" y2="${y}"/>
+     <circle cx="330" cy="${y}" r="2.5" fill="#3d5266"/>
+     <line class="wire" x1="330" y1="${y}" x2="430" y2="${y}"/>
+     <text class="port" x="432" y="${y+4}">OUT</text>
+     <line class="wire" x1="130" y1="${y}" x2="130" y2="${y+16}"/>
+     ${isFinite(r.rsh1)? resBoxV(130,y+16,shortOhm(r.rsh1),'Rsh1') :
+       `<text class="rname" x="118" y="${y+38}">open</text>`}
+     ${isFinite(r.rsh1)? `<line class="wire" x1="130" y1="${y+58}" x2="130" y2="${y+66}"/>${gnd(130,y+66)}`:''}
+     <line class="wire" x1="330" y1="${y}" x2="330" y2="${y+16}"/>
+     ${isFinite(r.rsh2)? resBoxV(330,y+16,shortOhm(r.rsh2),'Rsh2') :
+       `<text class="rname" x="318" y="${y+38}">open</text>`}
+     ${isFinite(r.rsh2)? `<line class="wire" x1="330" y1="${y+58}" x2="330" y2="${y+66}"/>${gnd(330,y+66)}`:''}`;
+}
+
+/* ============================================================
+   MAIN RECALC + RENDER
+   ============================================================ */
+function evalTopo(kind){
+  const r = kind==='T'? S.tCur : S.piCur;
+  const an = kind==='T'? analyzeT(r,S.rl,S.rs) : analyzePi(r,S.rl,S.rs);
+  const ratio = 1/an.tf;                      // pad input terminals -> load
+  /* pad-input voltage: rms for power math, display units for readouts */
+  const vinPadRms  = driveVrms(an.zin);
+  const vinPadDisp = vinPadRms*dispScale();
+  const pw = kind==='T'? powerT(r,S.rl,vinPadRms) : powerPi(r,S.rl,vinPadRms);
+  const vout = vinPadDisp*an.tf;
+  const rlin = returnLoss(an.zin,S.zs), rlout = returnLoss(an.zout,S.zl);
+  return {r,an,ratio,vout,pw,rlin,rlout,vinPadDisp};
+}
+
+function metricsHTML(e){
+  const dB = dbFromN(e.ratio);
+  const cells = [
+    ['ratio ÷N', sig(e.ratio), 'hi', 'mRatio'],
+    ['eff dB', sig(dB)+' dB', 'hi', 'mDb'],
+    ['V out', fmtV(e.vout), 'hi', 'mVout'],
+    ['Z in (w/ R_L)', fmtOhm(e.an.zin), '', 'mZin'],
+    ['Z out (w/ R_S)', fmtOhm(e.an.zout), '', 'mZout'],
+    ['RL in vs Z_S', isFinite(e.rlin.rl)? sig(e.rlin.rl)+' dB':'∞', '', 'returnloss'],
+    ['VSWR in', isFinite(e.rlin.vswr)? sig(e.rlin.vswr):'∞', '', 'vswr'],
+    ['RL out vs Z_L', isFinite(e.rlout.rl)? sig(e.rlout.rl)+' dB':'∞', '', 'returnloss'],
+    ['VSWR out', isFinite(e.rlout.vswr)? sig(e.rlout.vswr):'∞', '', 'vswr'],
+    ['P into pad', fmtW(e.pw.pin), '', 'mPin'],
+    ['P to load', fmtW(e.pw.pload), '', 'mPload'],
+  ];
+  if(isPowerUnit()) cells.push(['V at pad in', fmtV(e.vinPadDisp)+' '+dispUnit(), '', 'mVpad']);
+  return cells.map(c=>`<div class="m" data-help="${c[3]}"><div class="k">${c[0]}</div><div class="v ${c[2]||''}">${c[1]}</div></div>`).join('');
+}
+function powerHTML(e){
+  let h='<tr><th>Element</th><th style="text-align:right">Value</th><th style="text-align:right">Power</th><th style="text-align:right">% of Pin</th></tr>';
+  for(const p of e.pw.p){
+    const pct = e.pw.pin>0? 100*p.w/e.pw.pin : 0;
+    const warm = p.w>0.25 ? 'warm':'';
+    h+=`<tr><td>${p.name}</td><td class="r">${fmtOhm(p.val)}</td><td class="r ${warm}">${fmtW(p.w)}</td><td class="r">${sig(pct,3)}%</td></tr>`;
+  }
+  h+=`<tr><td>Load R_L</td><td class="r">${fmtOhm(S.rl)}</td><td class="r">${fmtW(e.pw.pload)}</td><td class="r">${sig(e.pw.pin>0?100*e.pw.pload/e.pw.pin:0,3)}%</td></tr>`;
+  return h;
+}
+function nodesHTML(e){
+  let h='<tr><th>Node</th><th style="text-align:right">Voltage ('+dispUnit()+')</th></tr>';
+  h+=`<tr><td>Pad input</td><td class="r">${fmtV(e.vinPadDisp)}</td></tr>`;
+  if(e.pw.nodes.vmid!==null){
+    const scale = e.vinPadDisp!==0? e.vinPadDisp/e.pw.nodes.vin : 0;
+    h+=`<tr><td>Mid node</td><td class="r">${fmtV(e.pw.nodes.vmid*scale)}</td></tr>`;
+  }
+  h+=`<tr><td>Output</td><td class="r">${fmtV(e.vout)}</td></tr>`;
+  return h;
+}
+function warnsHTML(e,kind){
+  const w=[];
+  if(Math.abs(S.rl-S.zl)/S.zl > 0.05) w.push(['R_L off Z_L by '+sig(100*Math.abs(S.rl-S.zl)/S.zl,3)+'%','']);
+  for(const p of e.pw.p) if(p.w>0.25) w.push([p.name.split(' ')[0]+' dissipates '+fmtW(p.w),'red']);
+  const nameplate = nFromDb(S.att);
+  const desR = kind==='T'? S.tDes:S.piDes;
+  if(desR){
+    const desAn = kind==='T'? analyzeT(desR,S.zl,S.zs):analyzePi(desR,S.zl,S.zs);
+    const expected = 1/desAn.tf;
+    if(Math.abs(e.ratio-expected)/expected > 0.01) w.push(['ratio '+sig(100*Math.abs(e.ratio-expected)/expected,3)+'% off design','']);
+  }
+  const shunts = kind==='T'? [e.r.r2] : [e.r.rsh1,e.r.rsh2].filter(isFinite);
+  if(shunts.some(v=>v<3)) w.push(['shunt < 3 Ω — parasitics matter','']);
+  if(Math.abs(S.zs-S.zl)>1e-9 && S.att <= attMin()+0.005) w.push(['at minimum-loss limit A_min','']);
+  return w.map(x=>`<span class="wbadge ${x[1]}">${x[0]}</span>`).join('');
+}
+
+function renderCard(kind){
+  const e = evalTopo(kind);
+  if(kind==='T'){
+    drawT(e.r);
+    document.getElementById('t_r1a').value=resDisp(e.r.r1a);
+    document.getElementById('t_r2').value=resDisp(e.r.r2);
+    document.getElementById('t_r1b').value=resDisp(e.r.r1b);
+    document.getElementById('t_r1a_e96').textContent=fmtOhm(nearestE96(e.r.r1a));
+    document.getElementById('t_r2_e96').textContent=fmtOhm(nearestE96(e.r.r2));
+    document.getElementById('t_r1b_e96').textContent=fmtOhm(nearestE96(e.r.r1b));
+    document.getElementById('customT').classList.toggle('show',S.tCustom);
+    document.getElementById('tUndo').disabled=!S.tCustom;
+    ['t_r1a','t_r2','t_r1b'].forEach(id=>document.getElementById(id).classList.toggle('edited',S.tCustom));
+    document.getElementById('tMetrics').innerHTML=metricsHTML(e);
+    document.getElementById('tPower').innerHTML=powerHTML(e);
+    document.getElementById('tNodes').innerHTML=nodesHTML(e);
+    document.getElementById('tWarns').innerHTML=warnsHTML(e,'T');
+    document.getElementById('heroTRatio').textContent='÷'+sig(e.ratio);
+    document.getElementById('heroTdB').textContent=sig(dbFromN(e.ratio))+' dB';
+  } else {
+    drawPi(e.r);
+    document.getElementById('p_rsh1').value=resDisp(e.r.rsh1);
+    document.getElementById('p_rs').value=resDisp(e.r.rs);
+    document.getElementById('p_rsh2').value=resDisp(e.r.rsh2);
+    document.getElementById('p_rsh1_e96').textContent=fmtOhm(nearestE96(e.r.rsh1));
+    document.getElementById('p_rs_e96').textContent=fmtOhm(nearestE96(e.r.rs));
+    document.getElementById('p_rsh2_e96').textContent=fmtOhm(nearestE96(e.r.rsh2));
+    document.getElementById('customPi').classList.toggle('show',S.piCustom);
+    document.getElementById('pUndo').disabled=!S.piCustom;
+    ['p_rsh1','p_rs','p_rsh2'].forEach(id=>document.getElementById(id).classList.toggle('edited',S.piCustom));
+    document.getElementById('pMetrics').innerHTML=metricsHTML(e);
+    document.getElementById('pPower').innerHTML=powerHTML(e);
+    document.getElementById('pNodes').innerHTML=nodesHTML(e);
+    document.getElementById('pWarns').innerHTML=warnsHTML(e,'Pi');
+    document.getElementById('heroPiRatio').textContent='÷'+sig(e.ratio);
+    document.getElementById('heroPidB').textContent=sig(dbFromN(e.ratio))+' dB';
+  }
+  return e;
+}
+
+/* ---- split panel ---- */
+function renderSplit(){
+  const warns=[];
+  const a1=S.s1, a2=S.att-S.s1;
+  const m1=aMin(S.zs,S.zmid), m2=aMin(S.zmid,S.zl);
+  if(a1<m1-0.005) warns.push(`stage 1 below A_min ${m1.toFixed(2)} dB for ${sig(S.zs)}→${sig(S.zmid)} Ω`);
+  if(a2<m2-0.005) warns.push(`stage 2 below A_min ${m2.toFixed(2)} dB for ${sig(S.zmid)}→${sig(S.zl)} Ω`);
+  const t1=designT(a1,S.zs,S.zmid), t2=designT(a2,S.zmid,S.zl);
+  const p1=designPi(a1,S.zs,S.zmid), p2=designPi(a2,S.zmid,S.zl);
+  /* single-pad reference: current designed T into actual RL */
+  const single=designT(S.att,S.zs,S.zl);
+  const singlePw=powerT(single,S.rl, driveVrms(analyzeT(single,S.rl,S.rs).zin));
+  if(single.r2<3 || single.r1a>1000 || single.r1b>1000)
+    warns.push('single pad needs extreme values (shunt < 3 Ω or series > 1 kΩ) — splitting recommended');
+  /* cascade exact analysis (T realizations) */
+  const an2=analyzeT(t2,S.rl,1e12);
+  const an1=analyzeT(t1,an2.zin,S.rs);
+  const ratio=(1/an1.tf)*(1/an2.tf);
+  const vin1=driveVrms(an1.zin);
+  const pw1=powerT(t1,an2.zin,vin1);
+  const vin2=vin1*an1.tf;
+  const pw2=powerT(t2,S.rl,vin2);
+  const maxSingle=Math.max(...singlePw.p.map(p=>p.w));
+  const maxSplit=Math.max(...pw1.p.map(p=>p.w),...pw2.p.map(p=>p.w));
+
+  document.getElementById('splitWarns').innerHTML=warns.map(w=>`<span class="wbadge">${w}</span>`).join('');
+  const stg=(title,db,zi,zo,t,p,pw)=>`
+    <div class="stage"><h4>${title} — ${db.toFixed(2)} dB (${sig(zi)} → ${sig(zo)} Ω)</h4>
+    <table class="mini">
+      <tr><th></th><th style="text-align:right">Exact</th><th style="text-align:right">E96</th></tr>
+      <tr><td>T · R1a</td><td class="r">${fmtOhm(t.r1a)}</td><td class="r">${fmtOhm(nearestE96(t.r1a))}</td></tr>
+      <tr><td>T · R2</td><td class="r">${fmtOhm(t.r2)}</td><td class="r">${fmtOhm(nearestE96(t.r2))}</td></tr>
+      <tr><td>T · R1b</td><td class="r">${fmtOhm(t.r1b)}</td><td class="r">${fmtOhm(nearestE96(t.r1b))}</td></tr>
+      <tr><td>π · Rsh1</td><td class="r">${fmtOhm(p.rsh1)}</td><td class="r">${fmtOhm(nearestE96(p.rsh1))}</td></tr>
+      <tr><td>π · Rs</td><td class="r">${fmtOhm(p.rs)}</td><td class="r">${fmtOhm(nearestE96(p.rs))}</td></tr>
+      <tr><td>π · Rsh2</td><td class="r">${fmtOhm(p.rsh2)}</td><td class="r">${fmtOhm(nearestE96(p.rsh2))}</td></tr>
+    </table>
+    <div style="font-size:10px;color:var(--dim)">stage dissipation ${fmtW(pw.p.reduce((s,x)=>s+x.w,0))} · max element ${fmtW(Math.max(...pw.p.map(x=>x.w)))}</div>
+    </div>`;
+  document.getElementById('splitStages').innerHTML=
+    stg('Stage 1',a1,S.zs,S.zmid,t1,p1,pw1)+stg('Stage 2',a2,S.zmid,S.zl,t2,p2,pw2);
+  document.getElementById('splitSummary').innerHTML=[
+    ['cascaded ratio','÷'+sig(ratio)],
+    ['cascaded dB',sig(dbFromN(ratio))+' dB'],
+    ['into actual R_L',fmtOhm(S.rl)],
+    ['stage-1 Zin',fmtOhm(an1.zin)],
+    ['stage-2 Zin (loaded)',fmtOhm(an2.zin)],
+  ].map(c=>`<div class="m"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join('');
+  document.getElementById('splitBenefit').textContent =
+    `Benefit: max single-resistor dissipation drops from ${fmtW(maxSingle)} (single pad) to ${fmtW(maxSplit)} (split).`;
+}
+
+/* ---- mismatch solver ---- */
+document.getElementById('solvT').addEventListener('click',()=>{S.solvTopo='T';solvBtns();runSolver();});
+document.getElementById('solvPi').addEventListener('click',()=>{S.solvTopo='Pi';solvBtns();runSolver();});
+function solvBtns(){
+  document.getElementById('solvT').classList.toggle('on',S.solvTopo==='T');
+  document.getElementById('solvPi').classList.toggle('on',S.solvTopo==='Pi');
+  document.getElementById('solvT').setAttribute('aria-pressed',S.solvTopo==='T');
+  document.getElementById('solvPi').setAttribute('aria-pressed',S.solvTopo==='Pi');
+}
+const measRatioF=document.getElementById('measRatio'), measDbF=document.getElementById('measDb');
+let measVal=null;
+function commitMeas(src){
+  const f = src==='ratio'? measRatioF : measDbF;
+  const v = parseNum(f.value);
+  if(f.value.trim()===''){ measVal=null; runSolver(); return; }
+  if(Number.isNaN(v)){ note(src==='ratio'?'measRatioNote':'measDbNote','invalid — cleared'); f.value=''; return; }
+  if(src==='ratio'){
+    if(v<1){ note('measRatioNote','ratio must be ≥ 1'); f.value=''; return; }
+    measVal=v; measDbF.value=sig(dbFromN(v));
+  } else {
+    if(v<0){ note('measDbNote','dB must be ≥ 0'); f.value=''; return; }
+    measVal=nFromDb(v); measRatioF.value=sig(measVal);
+  }
+  runSolver();
+}
+measRatioF.addEventListener('blur',()=>commitMeas('ratio'));
+measRatioF.addEventListener('keydown',e=>{if(e.key==='Enter'){measRatioF.blur();}});
+measDbF.addEventListener('blur',()=>commitMeas('db'));
+measDbF.addEventListener('keydown',e=>{if(e.key==='Enter'){measDbF.blur();}});
+function runSolver(){
+  const out=document.getElementById('solverOut');
+  if(measVal===null){ out.innerHTML='Enter a measured ratio or dB above.'; return; }
+  const isT=S.solvTopo==='T';
+  const r=isT?S.tCur:S.piCur, fn=isT?analyzeT:analyzePi;
+  const res=solveLoad(fn,r,S.rs,measVal);
+  if(!res.ok){
+    if(res.floor!==undefined)
+      out.innerHTML=`<span class="err">No load can produce ÷${sig(measVal)} with these resistors.</span><br>
+        The open-circuit minimum for this network is ÷${sig(res.floor)} (${sig(dbFromN(res.floor))} dB).
+        A measured ratio below that means the resistors differ from what's loaded here, or your input
+        reference point isn't the pad's input terminal (e.g. you measured the source EMF behind R_S).`;
+    else
+      out.innerHTML=`<span class="err">Ratio too large — even a near-short load doesn't reach ÷${sig(measVal)}.</span>`;
+    return;
+  }
+  const RL=res.RL;
+  const dev=100*(RL-S.zl)/S.zl;
+  /* expected ratio at nominal load */
+  const aNom=fn(r,S.zl,S.rs);
+  const expected=1/aNom.tf;
+  let diag;
+  if(RL>50*S.zl) diag='Load is essentially an open circuit — unterminated hi-Z scope/DMM input. This is the classic −6.02 dB error (you measure about half the designed ratio).';
+  else if(Math.abs(dev)<=5) diag='Within 5% of nominal — termination is close; residual error is likely resistor tolerance.';
+  else if(dev<0) diag='Termination reads LOW — check for a 47 Ω term, a parallel tap (scope probe, second cable), or a lossy/damaged load.';
+  else diag='Termination reads HIGH — check for a 75 Ω term on a 50 Ω system, a partially-connected load, or series contact resistance.';
+  out.innerHTML=`Implied actual load: <span class="big">${fmtOhm(RL)}</span>
+    &nbsp;(${dev>=0?'+':''}${sig(dev,3)}% vs Z_L = ${fmtOhm(S.zl)})<br>
+    Expected ratio at nominal Z_L: ÷${sig(expected)} (${sig(dbFromN(expected))} dB) · you measured ÷${sig(measVal)} (${sig(dbFromN(measVal))} dB)<br>
+    <span class="diag">◆ ${diag}</span>`;
+}
+
+/* ---- min-loss UI ---- */
+function renderMinLoss(){
+  const uneq=Math.abs(S.zs-S.zl)>1e-9;
+  document.getElementById('minLossBtn').style.display=uneq?'':'none';
+  const n=document.getElementById('minLossNote');
+  if(uneq){
+    n.classList.add('show');
+    n.innerHTML=`Matching ${sig(S.zs)} Ω → ${sig(S.zl)} Ω costs at least <b>${attMin().toFixed(2)} dB</b> (A_min).
+      The attenuation slider is clamped to this floor. “Min-loss pad” designs the degenerate two-resistor L-pad.`;
+  } else n.classList.remove('show');
+}
+
+/* ---- hero Vout ---- */
+function renderHero(eT,ePi){
+  document.getElementById('heroVout').textContent=fmtV(eT.vout)+' / '+fmtV(ePi.vout);
+  document.querySelectorAll('#heroStrip .cell').forEach(c=>c.classList.remove('warn'));
+}
+
+function recalcAll(){
+  if(!S.tCur) return;
+  const eT=renderCard('T');
+  const ePi=renderCard('Pi');
+  renderHero(eT,ePi);
+  renderMinLoss();
+  showS1();
+  renderSplit();
+  runSolver();
+}
+
+/* ============================================================
+   BUILT-IN HELP — glossary + click-to-explain mode
+   ============================================================ */
+const HELP = {
+  att:{t:'Attenuation (dB)',b:`How much the pad reduces the signal, in decibels: <span class="hf">dB = 20·log₁₀(N)</span> where N is the voltage ratio. Defined as the power attenuation between matched ports. When Z_S ≠ Z_L the slider's lower bound clamps to A_min — a resistive pad matching unequal impedances can't go below it.`,rel:['ratio','amin']},
+  ratio:{t:'Voltage ratio (÷N)',b:`The voltage division factor: <span class="hf">N = V(pad input) / V(load)</span> with the pad terminated in the actual R_L. Linked to dB — edit either. ÷4 = 12.04 dB, ÷10 = 20 dB, ÷12 = 21.58 dB.`,rel:['att','mRatio']},
+  zs:{t:'Z_S — design source impedance',b:`The impedance the pad's <b>input port is designed to match</b>. This is a design target, not the actual source — that's R_S under Operating Conditions. With Z_S = Z_L you get a symmetric pad; unequal values produce an asymmetric matching pad.`,rel:['zl','rs','amin']},
+  zl:{t:'Z_L — design load impedance',b:`The impedance the pad's <b>output port is designed to match</b>, and the "nominal" reference used by warnings and the mismatch solver. The actual connected load is R_L — kept separate so you can study mistermination.`,rel:['zs','rl']},
+  drive:{t:'Input drive',b:`The signal level at the pad's input terminals. <b>Vpk / Vrms</b>: voltage directly. <b>dBm / W</b>: power delivered into the pad's actual Z_in — the equivalent voltage is derived per topology as <span class="hf">V = √(P·Z_in)</span>. Switching units preserves the physical drive level.`,rel:['mPin','mVpad']},
+  rl:{t:'R_L — actual load',b:`What is <b>really connected</b> to the output. All analysis (ratio, Z_in, power) uses this value. It tracks Z_L until you touch it, then it's independent. A pad only delivers its nameplate dB when R_L = Z_L — an open circuit reads 6.02 dB low (the classic hi-Z scope error).`,rel:['zl','solverOut']},
+  rs:{t:'R_S — actual source resistance',b:`The resistance of whatever is <b>really driving</b> the pad. It does NOT affect the displayed ratio (referenced at the pad's input terminals) — it's used only to compute Z_out looking back into the output port.`,rel:['mZout','zs']},
+  redesign:{t:'Redesign Pads',b:`Recomputes all six resistors from the current Attenuation, Z_S and Z_L. The button turns <b style="color:var(--amber)">amber — (design stale)</b> when you've changed a design setting since the last redesign; resistor values are never changed silently.`,rel:['undo','custom']},
+  minloss:{t:'Minimum-loss pad',b:`Designs the two-resistor L-pad that matches Z_S to Z_L with the <b>least possible attenuation</b> (exactly A_min). One element of the T/π degenerates to zero — the schematic draws only two resistors.`,rel:['amin']},
+  amin:{t:'A_min — minimum attenuation',b:`A resistive network matching two unequal impedances both ways must attenuate at least <span class="hf">A_min = 20·log₁₀(√r + √(r−1))</span> where r = Z_hi/Z_lo. Example: 5 Ω → 50 Ω costs at least 15.79 dB. Equal impedances → A_min = 0.`,rel:['minloss','zs','zl']},
+  custom:{t:'CUSTOM badge',b:`You've hand-edited a resistor in this card. Everything shown is now the <b>exact analysis of your values</b> — not the nameplate design. Warnings compare against the designed pad so you can see the drift.`,rel:['undo','e96']},
+  undo:{t:'Undo manual edits',b:`Restores the last <b>designed</b> resistor set for this card, without touching any settings. Only active while the card is in CUSTOM mode.`,rel:['custom','redesign']},
+  e96:{t:'Apply E96 values',b:`Loads the nearest E96 (1 % standard) value for each resistor. E96 values are what you can actually buy. This counts as a manual edit — the card goes CUSTOM and shows the realized error from the exact design.`,rel:['custom']},
+  redesignCard:{t:'Redesign (this card)',b:`Recomputes just this topology's resistors from the current Attenuation / Z_S / Z_L, leaving the other card untouched.`,rel:['redesign']},
+  r1a:{t:'R1a — T series arm (input side)',b:`Input-side series resistor of the T. Sets most of the input impedance on deep pads. In unequal Z_S/Z_L designs R1a ≠ R1b. Editable — the card recalculates exactly.`,rel:['r1b','r2']},
+  r1b:{t:'R1b — T series arm (output side)',b:`Output-side series resistor of the T. Independent of R1a so you can build asymmetric pads.`,rel:['r1a','r2']},
+  r2:{t:'R2 — T shunt leg',b:`The grounded middle resistor of the T. On deep pads it gets very small (2.24 Ω at 33 dB) — a few tens of mΩ of solder or trace resistance shifts the ratio noticeably, and via inductance degrades it at high frequency. Below 3 Ω a warning suggests splitting the pad.`,rel:['r1a','splitSummary']},
+  rsh1:{t:'Rsh1 — π shunt (input side)',b:`Input-side grounded resistor of the π. On deep pads it approaches Z_S, and it dissipates most of the input power.`,rel:['rser','rsh2']},
+  rser:{t:'Rs — π series element',b:`The through resistor of the π. Grows large on deep pads (1.18 kΩ at 33.5 dB) — parasitic capacitance across it limits high-frequency isolation.`,rel:['rsh1','rsh2']},
+  rsh2:{t:'Rsh2 — π shunt (output side)',b:`Output-side grounded resistor of the π. Independent of Rsh1 for asymmetric designs.`,rel:['rsh1','rser']},
+  schem:{t:'Schematic',b:`Live drawing of the network with current resistor values. IN is driven through R_S; OUT is terminated by R_L. In minimum-loss mode only the two surviving elements are drawn.`,rel:[]},
+  warns:{t:'Warning badges',b:`Amber flags raised by the analysis: R_L off nominal by >5 %, a resistor dissipating >0.25 W, realized ratio >1 % from the design, or a shunt below 3 Ω. Each one names the condition that tripped it.`,rel:['power']},
+  mRatio:{t:'÷N — actual voltage ratio',b:`The voltage division the network <b>actually produces</b> into the current R_L: <span class="hf">N = V(pad in)/V(out)</span>. This is exact circuit analysis of the loaded resistors — mistermination and custom edits show up here immediately.`,rel:['mDb','rl']},
+  mDb:{t:'Effective dB',b:`<span class="hf">20·log₁₀</span> of the actual voltage ratio. Matches the nameplate only when R_L = Z_L and the resistors are the designed values.`,rel:['mRatio']},
+  mVout:{t:'V out',b:`The voltage across the actual load R_L, in the drive's display unit (Vpk if driving in Vpk, else Vrms).`,rel:['drive','nodes']},
+  mZin:{t:'Z in (w/ R_L)',b:`Impedance looking <b>into the pad's input</b> with the actual R_L on the output. T: <span class="hf">Z_in = R1a + R2 ∥ (R1b + R_L)</span>. Note: on deep pads Z_in barely moves even when the output is badly misterminated — it will NOT warn you of a bad R_L.`,rel:['mZout','returnloss']},
+  mZout:{t:'Z out (w/ R_S)',b:`Impedance looking <b>back into the pad's output</b> with your actual source resistance R_S connected at the input — i.e. what the load "sees" driving it. T: <span class="hf">Z_out = R1b + R2 ∥ (R1a + R_S)</span>. A matched pad ≥10 dB shows Z_out ≈ Z_L almost regardless of R_S — deep pads isolate the ports.`,rel:['mZin','rs','vswr']},
+  returnloss:{t:'Return loss',b:`Match quality in dB: <span class="hf">RL = −20·log₁₀|Γ|</span>, where <span class="hf">Γ = (Z − Z₀)/(Z + Z₀)</span>. Input is scored against Z_S, output against Z_L. Bigger is better; ∞ = perfect match; 14 dB ≈ VSWR 1.5.`,rel:['vswr','mZin']},
+  vswr:{t:'VSWR',b:`Voltage standing-wave ratio: <span class="hf">(1+|Γ|)/(1−|Γ|)</span>. 1.00 = perfect match. Same information as return loss on a different scale: VSWR 1.2 ≈ 20.8 dB RL, 1.5 ≈ 14 dB, 2.0 ≈ 9.5 dB.`,rel:['returnloss']},
+  mPin:{t:'P into pad',b:`Power delivered into the pad's input: <span class="hf">P = V²rms / Z_in</span>. When driving in dBm or W this reads back exactly what you entered.`,rel:['mPload','power']},
+  mPload:{t:'P to load',b:`Power actually reaching R_L. Everything between P-in and P-to-load is heat in the pad's resistors — see the Power dissipation table for who takes it.`,rel:['mPin','power']},
+  mVpad:{t:'V at pad in',b:`Shown when driving in dBm or W: the input voltage implied by the entered power and this topology's actual Z_in — <span class="hf">V = √(P·Z_in)</span>. Differs slightly between T and π cards if their Z_in differ.`,rel:['drive','mZin']},
+  power:{t:'Power dissipation table',b:`Exact per-resistor dissipation at the current drive. Amber above 0.25 W (a stock 0603/0805 rating). On deep pads the input-side element takes nearly all the power — at 33 dB it's ~96 % of P-in. Size that part or split the pad.`,rel:['splitSummary','warns']},
+  nodes:{t:'Node voltages',b:`The voltage at each point along the network: pad input, internal node(s), and output — in the drive's display unit. Handy for probing a physical build to see where it diverges.`,rel:['mVout']},
+  s1:{t:'Stage 1 attenuation',b:`How much of the total dB the first pad takes; stage 2 gets the remainder. Splitting matters on deep pads: 33 dB in one T needs a 2.2 Ω shunt taking ~96 % of the power; 20 + 13 dB is buildable and spreads the heat.`,rel:['zmid','splitBenefit']},
+  eqsplit:{t:'Equal split',b:`Recenters the split so both stages take the same dB (total/2 each).`,rel:['s1']},
+  zmid:{t:'Z_mid — interstage impedance',b:`The impedance the two stages match at their junction. Stage 1 is designed Z_S→Z_mid, stage 2 Z_mid→Z_L. With equal Z_S/Z_L, leave it at 50 Ω. For unequal conversions you can split the transformation (e.g. 5→50 then 50→50).`,rel:['s1','zs','zl']},
+  splitSummary:{t:'Split pad',b:`Realizes the total attenuation as <b>two cascaded pads</b> instead of one. Benefits: no extreme resistor values (deep-pad shunts get tiny, series get huge) and the heat spreads across stages. The cascade is analyzed exactly — stage 2 with R_L first, then stage 1 loaded by stage 2's real Z_in.`,rel:['s1','zmid','splitBenefit']},
+  splitStages:{t:'Stage designs',b:`Exact and E96 resistor values for each stage, in both T and π form. Each stage is a proper matched pad at its design impedances, so you can also substitute an off-the-shelf attenuator for either stage.`,rel:['splitSummary','e96']},
+  splitBenefit:{t:'Split benefit',b:`Compares the worst single-resistor dissipation of the one-pad design against the split version at the current drive — the main thermal argument for splitting.`,rel:['power','splitSummary']},
+  measRatio:{t:'Measured ratio',b:`The voltage division you actually measured: <span class="hf">V(pad input) / V(output)</span> — both measured at the pad's terminals. Enter it (or the dB equivalent) and the solver finds what load would produce it.`,rel:['measDb','solverOut']},
+  measDb:{t:'Measured dB',b:`Same measurement expressed in dB — linked to the ratio field, edit either.`,rel:['measRatio']},
+  solvTopo:{t:'Solver topology',b:`Which card's currently loaded resistors (designed or custom) the solver analyzes. Make sure it matches the pad you physically measured.`,rel:['custom']},
+  solverOut:{t:'Solver result',b:`The load resistance that exactly reproduces your measured ratio, found by numerically solving the network. Rules of thumb: ratio ≈ half expected → unterminated output (hi-Z scope, −6.02 dB); a few % high → termination a few Ω low or a parallel tap.`,rel:['measRatio','rl']},
+  units:{t:'Drive units',b:`<b>Vpk</b>: peak voltage at the pad input. <b>Vrms</b>: RMS voltage (Vpk/√2 for a sine). <b>dBm</b>: power in dB relative to 1 mW into the pad's Z_in. <b>W</b>: power in watts into Z_in. Conversions preserve the physical drive.`,rel:['drive']},
+  selftests:{t:'Self-tests',b:`19 checks run at every load: design equations, network analysis anchors (33 dB → ÷44.668, open load → ÷22.35), A_min, power conversions, solver, and input clamping. Green ✓ means the math engine verified itself.`,rel:[]},
+  panelDesign:{t:'Design Targets',b:`What the pad <b>should be</b>: attenuation and the two port impedances it's designed to match. Changing these marks the design stale — resistors only change when you click Redesign.`,rel:['att','zs','zl','redesign']},
+  panelOper:{t:'Operating Conditions',b:`What's <b>actually connected</b>: real drive level, real load, real source. These re-analyze the loaded resistors live but never modify them — so you can study mistermination and drive level without disturbing the design.`,rel:['drive','rl','rs']},
+  panelSplit:{t:'Split Pad panel',b:`Realizes the total attenuation as two cascaded stages — see the split summary for why and when.`,rel:['splitSummary']},
+  panelSolver:{t:'Mismatch Solver',b:`Works backwards from a bench measurement: given the ratio you measured, it computes the load impedance that explains it and diagnoses the likely cause.`,rel:['measRatio','solverOut']},
+  hero:{t:'Hero strip',b:`The headline numbers for both topologies at a glance: actual voltage ratio, effective dB, and output voltage into the current R_L. Amber highlight = the value deviates from the design intent.`,rel:['mRatio','mDb','mVout']},
+};
+
+const helpEls = [
+  ['#attField','att'],['#ratioField','ratio'],['#zsField','zs'],['#zlField','zl'],
+  ['#vinField','drive'],['#rlField','rl'],['#rsField','rs'],
+  ['#redesignBtn','redesign'],['#minLossBtn','minloss'],['#minLossNote','amin'],
+  ['#customT','custom'],['#customPi','custom'],
+  ['#tUndo','undo'],['#pUndo','undo'],['#tApplyE96','e96'],['#pApplyE96','e96'],
+  ['#tRedesign','redesignCard'],['#pRedesign','redesignCard'],
+  ['#t_r1a','r1a'],['#t_r1b','r1b'],['#t_r2','r2'],
+  ['#p_rsh1','rsh1'],['#p_rs','rser'],['#p_rsh2','rsh2'],
+  ['#svgT','schem'],['#svgPi','schem'],
+  ['#tWarns','warns'],['#pWarns','warns'],
+  ['#tPower','power'],['#pPower','power'],['#tNodes','nodes'],['#pNodes','nodes'],
+  ['#s1Field','s1'],['#eqSplitBtn','eqsplit'],['#zmidField','zmid'],
+  ['#splitSummary','splitSummary'],['#splitStages','splitStages'],['#splitBenefit','splitBenefit'],
+  ['#measRatio','measRatio'],['#measDb','measDb'],['#solvT','solvTopo'],['#solvPi','solvTopo'],
+  ['#solverOut','solverOut'],['#selftestBadge','selftests'],['#heroStrip','hero'],
+  ['#unitVpk','units'],['#unitVrms','units'],['#unitdBm','units'],['#unitW','units'],
+];
+function attachHelp(){
+  for(const [sel,key] of helpEls){
+    const el=document.querySelector(sel); if(!el) continue;
+    /* controls get the tag on their .ctl/.rbox wrapper so the whole row is clickable */
+    const wrap = el.closest('.ctl') || el.closest('.rbox') || el;
+    if(!wrap.dataset.help) wrap.dataset.help = key;
+    else if(el!==wrap && !el.dataset.help) el.dataset.help = key;
+  }
+  document.querySelectorAll('.panel h2, details.bigpanel summary').forEach(h=>{
+    const t=h.textContent.toLowerCase();
+    if(t.includes('design')) h.dataset.help='panelDesign';
+    else if(t.includes('operating')) h.dataset.help='panelOper';
+    else if(t.includes('split')) h.dataset.help='panelSplit';
+    else if(t.includes('solver')||t.includes('mismatch')) h.dataset.help='panelSolver';
+  });
+}
+
+let helpOn=false, helpAnchor=null;
+const pop=document.getElementById('helpPop');
+function hideHelp(){ pop.classList.remove('show'); helpAnchor=null; }
+function showHelp(key, anchor){
+  const h=HELP[key]; if(!h){ hideHelp(); return; }
+  helpAnchor=anchor;
+  const rel=(h.rel||[]).filter(k=>HELP[k]).map(k=>`<span data-hlink="${k}">${HELP[k].t.split('—')[0].trim()}</span>`).join('');
+  pop.innerHTML=`<span class="hclose" data-hclose>✕</span><h4>${h.t}</h4><div class="hb">${h.b}</div>`
+    +(rel?`<div class="hrel">Related: ${rel}</div>`:'')
+    +`<div class="hidx" data-hindex>▸ all terms</div>`;
+  positionPop(anchor);
+}
+function showIndex(anchor){
+  helpAnchor=anchor;
+  const list=Object.keys(HELP).sort((a,b)=>HELP[a].t.localeCompare(HELP[b].t))
+    .map(k=>`<span data-hlink="${k}">${HELP[k].t}</span>`).join('');
+  pop.innerHTML=`<span class="hclose" data-hclose>✕</span><h4>Glossary — all terms</h4><div class="hlist">${list}</div>`;
+  positionPop(anchor);
+}
+function positionPop(anchor){
+  pop.classList.add('show');
+  const r=anchor? anchor.getBoundingClientRect():{left:innerWidth/2,bottom:60,top:40,right:innerWidth/2};
+  /* measure, then clamp inside viewport */
+  const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  let x=Math.min(Math.max(8, r.left), innerWidth-pw-8);
+  let y=r.bottom+8;
+  if(y+ph>innerHeight-8) y=Math.max(8, r.top-ph-8);
+  pop.style.left=x+'px'; pop.style.top=y+'px';
+}
+function setHelpMode(on){
+  helpOn=on;
+  document.body.classList.toggle('helpmode',on);
+  document.getElementById('helpBtn').classList.toggle('on',on);
+  document.getElementById('helpBtn').setAttribute('aria-pressed',on);
+  if(!on) hideHelp();
+  if(on) showIndex(document.getElementById('helpBtn'));
+}
+document.getElementById('helpBtn').addEventListener('click',e=>{
+  e.stopPropagation(); setHelpMode(!helpOn);
+});
+/* capture-phase guards: in help mode, clicks explain instead of act */
+document.addEventListener('pointerdown',e=>{
+  if(!helpOn) return;
+  if(e.target.closest('#helpPop')||e.target.closest('#helpBtn')) return;
+  e.preventDefault(); e.stopPropagation();
+},true);
+document.addEventListener('click',e=>{
+  if(!helpOn) return;
+  if(e.target.closest('#helpBtn')) return;
+  const inPop=e.target.closest('#helpPop');
+  if(inPop){
+    if(e.target.closest('[data-hclose]')) hideHelp();
+    else if(e.target.closest('[data-hindex]')) showIndex(helpAnchor);
+    else{ const l=e.target.closest('[data-hlink]'); if(l) showHelp(l.dataset.hlink, helpAnchor); }
+    return;
+  }
+  e.preventDefault(); e.stopPropagation();
+  const t=e.target.closest('[data-help]');
+  if(t) showHelp(t.dataset.help, t); else hideHelp();
+},true);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(pop.classList.contains('show')) hideHelp();
+    else if(helpOn) setHelpMode(false);
+  }
+  if(e.key==='?' && !e.target.closest('input')) setHelpMode(!helpOn);
+});
+
+/* ============================================================
+   SELF-TESTS
+   ============================================================ */
+function selfTests(){
+  const T=[]; const ok=(name,cond)=>T.push([name,!!cond]);
+  const near=(a,b,tol)=>Math.abs(a-b)<=tol*Math.abs(b);
+
+  /* 1. 33 dB 50/50 */
+  const d33=designT(33,50,50);
+  const a50=analyzeT(d33,50,1e12), aOC=analyzeT(d33,1e12,1e12);
+  ok('T33 R1=47.81', near(d33.r1a,47.810,1e-3));
+  ok('T33 R2=2.2398', near(d33.r2,2.2398,1e-3));
+  ok('T33 ratio 44.668 @50Ω', near(1/a50.tf,44.668,1e-3));
+  ok('T33 ratio ~22.35 open', near(1/aOC.tf,22.35,5e-3));
+  /* 2. 12.04 dB */
+  const d12=designT(12.0412,50,50);
+  ok('T12 R1=30.00', near(d12.r1a,30.0,2e-3));
+  ok('T12 R2=26.667', near(d12.r2,26.667,2e-3));
+  /* 3. power-drive conversions */
+  ok('10 dBm into 50Ω → 0.7071 Vrms', near(driveVrmsU(10,'dBm',50),0.70711,1e-4));
+  ok('1 W into 50Ω → 7.071 Vrms',     near(driveVrmsU(1,'W',50),7.0711,1e-4));
+  ok('0 dBm into 75Ω → 0.2739 Vrms',  near(driveVrmsU(0,'dBm',75),0.27386,1e-4));
+  /* 4. 33.51 dB pi */
+  const p335=designPi(33.508,50,50);
+  ok('π33.5 Rsh=52.16', near(p335.rsh1,52.16,2e-3));
+  ok('π33.5 Rs=1183.5', near(p335.rs,1183.5,2e-3));
+  /* 5. solver: 33 dB measuring 47.36 → ~44.6 Ω */
+  const sv=solveLoad(analyzeT,d33,50,47.36);
+  ok('solver 47.36→44.6Ω', sv.ok && near(sv.RL,44.62,0.01));
+  /* 5b. power bookkeeping: 0 dBm drive → pin reads exactly 1 mW */
+  const pwChk=powerT(d33,50,driveVrmsU(0,'dBm',a50.zin));
+  ok('0 dBm drive → Pin = 1 mW', near(pwChk.pin,0.001,1e-9));
+  /* 6. unequal 5→50 */
+  const am=aMin(5,50);
+  ok('A_min(5,50)=15.79', near(am,15.79,1e-3));
+  const dml=designT(am+1e-9,5,50);
+  const aml=analyzeT(dml,50,1e12), amlo=analyzeT(dml,50,5);
+  ok('minloss Zin=5', near(aml.zin,5,1e-4));
+  ok('minloss Zout=50', near(amlo.zout,50,1e-4));
+  ok('minloss r1a→0', dml.r1a<1e-6);
+  /* 7. clamping */
+  ok('clamp 70→60', clampNum(70,0,60)===60);
+  ok('parse abc → NaN', Number.isNaN(parseNum('abc')));
+
+  const pass=T.filter(t=>t[1]).length;
+  console.group('%cRF Attenuator self-tests','color:#2de2e6;font-weight:bold');
+  T.forEach(t=>console.log((t[1]?'%c✓':'%c✗')+' '+t[0], t[1]?'color:#6ee7a0':'color:#ff6b6b'));
+  console.groupEnd();
+  const b=document.getElementById('selftestBadge');
+  b.textContent=`self-tests ${pass}/${T.length} ${pass===T.length?'✓':'✗'}`;
+  b.classList.add(pass===T.length?'ok':'bad');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  showAtt(); vinC.show(); zsC.show(); zlC.show(); rlC.show(); rsC.show(); zmidC.show();
+  unitBtns(); solvBtns();
+  redesign('all');
+  attachHelp();
+  selfTests();
+}
+init();
+
+/* Offline support only runs on HTTPS (GitHub Pages) or a local test server.
+   Keeping the file:// version untouched lets the original single-file app
+   continue to open directly from disk without registration errors. */
+if('serviceWorker' in navigator &&
+   (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).catch(err=>{
+      console.warn('Offline support could not start:',err);
+    });
+  });
+}
+</script>
+</body>
+</html>
